@@ -1,8 +1,7 @@
-import React, { memo, useState, useRef, useEffect } from 'react';
+import { memo, useState, useCallback, useRef, useEffect } from 'react';
 import { Chart, ScatterController, LinearScale, PointElement, Tooltip } from 'chart.js';
 import { Scatter } from 'react-chartjs-2';
 import annotationPlugin from 'chartjs-plugin-annotation';
-import { ChevronDown } from 'lucide-react';
 
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -87,35 +86,60 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 
 Chart.register(ScatterController, LinearScale, PointElement, Tooltip, annotationPlugin);
 var API_URL = "https://api.platform.opentargets.org/api/v4/graphql";
-// Memoized SearchBar component
 var SearchBar = memo(function (_a) {
     var searchTerm = _a.searchTerm, onSearchChange = _a.onSearchChange, searchField = _a.searchField, onSearchFieldChange = _a.onSearchFieldChange;
+    var _b = useState(false), isDropdownOpen = _b[0], setIsDropdownOpen = _b[1];
+    var handleSelectChange = useCallback(function (e) {
+        onSearchFieldChange(e.target.value);
+        setIsDropdownOpen(false);
+    }, [onSearchFieldChange]);
+    var handleBlur = useCallback(function () {
+        requestAnimationFrame(function () {
+            setIsDropdownOpen(false);
+        });
+    }, []);
     return (React.createElement("div", { className: "flex flex-col space-y-2 w-full max-w-md sm:w-auto mt-5" },
         React.createElement("div", { className: "relative" },
-            React.createElement("input", { type: "text", value: searchTerm, onChange: function (e) { return onSearchChange(e.target.value); }, className: "block w-full px-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm", placeholder: "Search..." })),
-        React.createElement("select", { value: searchField, onChange: function (e) { return onSearchFieldChange(e.target.value); }, className: "block w-full px-3 py-2 border border-gray-300 text-gray-600 rounded-md leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" },
-            React.createElement("option", { value: "depmapId" }, "DepMap ID"),
-            React.createElement("option", { value: "cellLineName" }, "Cell Line Name"),
-            React.createElement("option", { value: "diseaseFromSource" }, "Disease"),
-            React.createElement("option", { value: "geneEffect" }, "Gene Effect"),
-            React.createElement("option", { value: "expression" }, "Expression"))));
+            React.createElement("select", { value: searchField, onChange: handleSelectChange, onFocus: function () { return setIsDropdownOpen(true); }, onBlur: handleBlur, className: "block appearance-none cursor-pointer dark:bg-transparent w-full px-3 py-2 border border-gray-300 rounded-xl text-gray-600 dark:text-gray-300 leading-5 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" },
+                React.createElement("option", { value: "depmapId", className: "dark:text-gray-300 dark:bg-gray-800" }, "DepMap ID"),
+                React.createElement("option", { value: "cellLineName", className: "dark:text-gray-300 dark:bg-gray-800" }, "Cell Line Name"),
+                React.createElement("option", { value: "diseaseFromSource", className: "dark:text-gray-300 dark:bg-gray-800" }, "Disease"),
+                React.createElement("option", { value: "geneEffect", className: "dark:text-gray-300 dark:bg-gray-800" }, "Gene Effect"),
+                React.createElement("option", { value: "expression", className: "dark:text-gray-300 dark:bg-gray-800" }, "Expression")),
+            React.createElement("div", { className: "absolute inset-y-0 right-3 flex items-center pointer-events-none" },
+                React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "currentColor", className: "w-5 h-5 ml-1 text-gray-500 dark:text-gray-300 transition-transform duration-200 ".concat(isDropdownOpen ? "rotate-180" : "rotate-0"), "aria-hidden": "true" },
+                    React.createElement("path", { fillRule: "evenodd", d: "M19.53 8.47a.75.75 0 0 1 0 1.06l-7 7a.75.75 0 0 1-1.06 0l-7-7a.75.75 0 1 1 1.06-1.06L12 14.44l6.47-6.47a.75.75 0 0 1 1.06 0z", clipRule: "evenodd" })))),
+        React.createElement("div", { className: "relative rounded-lg" },
+            React.createElement("input", { type: "text", value: searchTerm, onChange: function (e) { return onSearchChange(e.target.value); }, className: "block w-full px-3 py-2 border border-gray-300 leading-5 rounded-xl bg-white dark:bg-transparent dark:text-gray-300 placeholder-gray-500 dark:placeholder:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm", placeholder: "Search..." }))));
 });
-// Memoized TissueDropdown component
+SearchBar.displayName = "SearchBar";
 var TissueDropdown = memo(function (_a) {
     var tissues = _a.tissues, selectedTissues = _a.selectedTissues, onTissueToggle = _a.onTissueToggle;
     var _b = useState(false), isOpen = _b[0], setIsOpen = _b[1];
-    return (React.createElement("div", { className: "relative" },
-        React.createElement("button", { onClick: function () { return setIsOpen(!isOpen); }, className: "flex items-center justify-between w-48 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2" },
+    var dropdownRef = useRef(null);
+    useEffect(function () {
+        var handleClickOutside = function (event) {
+            if (dropdownRef.current &&
+                !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return function () {
+            return document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+    return (React.createElement("div", { className: "relative inline-block text-left w-full", ref: dropdownRef },
+        React.createElement("button", { onClick: function () { return setIsOpen(!isOpen); }, className: "flex items-center justify-between w-full px-4 py-2 text-gray-600 rounded-xl text-sm font-medium bg-white border dark:bg-transparent dark:text-gray-300 border-gray-300 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2" },
             "Filter Tissues",
-            React.createElement(ChevronDown, { className: "w-5 h-5 ml-2 -mr-1", "aria-hidden": "true" })),
-        isOpen && (React.createElement("div", { className: "absolute z-10 w-48 mt-2 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5" },
-            React.createElement("div", { className: "py-1 max-h-64 overflow-y-auto" }, tissues.map(function (tissue, index) { return (React.createElement("div", { key: index, className: "flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer", onClick: function () {
-                    onTissueToggle(tissue);
-                    setIsOpen(false);
-                } },
-                React.createElement("input", { type: "checkbox", checked: selectedTissues.includes(tissue), readOnly: true, className: "h-4 w-4 border-gray-300 rounded" }),
-                React.createElement("span", { className: "ml-3" }, tissue))); }))))));
+            React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "currentColor", className: "w-5 h-5 transition-transform duration-200 ".concat(isOpen ? "rotate-180" : "rotate-0"), "aria-hidden": "true" },
+                React.createElement("path", { fillRule: "evenodd", d: "M19.53 8.47a.75.75 0 0 1 0 1.06l-7 7a.75.75 0 0 1-1.06 0l-7-7a.75.75 0 1 1 1.06-1.06L12 14.44l6.47-6.47a.75.75 0 0 1 1.06 0z", clipRule: "evenodd" }))),
+        isOpen && (React.createElement("div", { className: "absolute  mt-2  bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-50 dark:bg-gray-800 rounded-xl" },
+            React.createElement("div", { className: "py-1 max-h-64 overflow-y-auto" }, tissues.map(function (tissue, index) { return (React.createElement("label", { key: index, className: "flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300 cursor-pointer" },
+                React.createElement("input", { type: "checkbox", checked: selectedTissues.includes(tissue), onChange: function () { return onTissueToggle(tissue); }, className: "h-3 w-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500", onClick: function (e) { return e.stopPropagation(); } }),
+                React.createElement("span", { className: "ml-3 flex-grow" }, tissue))); }))))));
 });
+TissueDropdown.displayName = "TissueDropdown";
 var GeneEssentialityChart = function (_a) {
     var ensemblId = _a.ensemblId, setLoading = _a.setLoading, setError = _a.setError;
     var _b = useState(null), chartData = _b[0], setChartData = _b[1];
@@ -126,7 +150,77 @@ var GeneEssentialityChart = function (_a) {
     var chartRef = useRef(null);
     var _f = useState(""), searchTerm = _f[0], setSearchTerm = _f[1];
     var _g = useState("cellLineName"), searchField = _g[0], setSearchField = _g[1];
-    var _h = useState(null), selectedCategory = _h[0], setSelectedCategory = _h[1];
+    var _h = useState([]), selectedCategories = _h[0], setSelectedCategories = _h[1];
+    var _j = useState(null), selectedPoint = _j[0], setSelectedPoint = _j[1];
+    var _k = useState(300), sidebarWidth = _k[0], setSidebarWidth = _k[1];
+    var _l = useState(false), isResizing = _l[0], setIsResizing = _l[1];
+    var _m = useState(false), isSidebarCollapsed = _m[0], setIsSidebarCollapsed = _m[1];
+    var previousWidthRef = useRef(sidebarWidth);
+    var resizeRef = useRef(null);
+    useEffect(function () {
+        var handleMouseMove = function (e) {
+            if (!isResizing)
+                return;
+            var newWidth = e.clientX;
+            if (newWidth >= 200 && newWidth <= window.innerWidth * 0.8) {
+                setSidebarWidth(newWidth);
+            }
+        };
+        var handleMouseUp = function () {
+            setIsResizing(false);
+        };
+        if (isResizing) {
+            document.addEventListener("mousemove", handleMouseMove);
+            document.addEventListener("mouseup", handleMouseUp);
+        }
+        return function () {
+            document.removeEventListener("mousemove", handleMouseMove);
+            document.removeEventListener("mouseup", handleMouseUp);
+        };
+    }, [isResizing]);
+    var toggleSidebar = function () {
+        setIsSidebarCollapsed(!isSidebarCollapsed);
+        if (isSidebarCollapsed) {
+            setSidebarWidth(previousWidthRef.current);
+        }
+        else {
+            previousWidthRef.current = sidebarWidth;
+            setSidebarWidth(40);
+        }
+    };
+    var exportToCSV = function () {
+        if (!chartData || !chartData.datasets[0].data)
+            return;
+        var data = chartData.datasets[0].data;
+        var headers = [
+            "Tissue",
+            "Cell Line",
+            "DepMap ID",
+            "Disease",
+            "Gene Effect",
+            "Expression",
+        ];
+        var csvContent = __spreadArray([
+            headers.join(",")
+        ], data.map(function (point) {
+            return [
+                "\"".concat(point.tissue, "\""),
+                "\"".concat(point.cellLine, "\""),
+                "\"".concat(point.depmapId, "\""),
+                "\"".concat(point.disease, "\""),
+                point.geneEffect,
+                point.expression || "N/A",
+            ].join(",");
+        }), true).join("\n");
+        var blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        var link = document.createElement("a");
+        var url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "gene-essentiality-data.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
     var handleSearchChange = function (value) {
         setSearchTerm(value);
     };
@@ -136,7 +230,7 @@ var GeneEssentialityChart = function (_a) {
     var handleTissueToggle = function (tissue) {
         setSelectedTissues(function (prev) {
             return prev.includes(tissue)
-                ? prev.filter(function (t) { return t !== tissue; }) // Remove if already selected
+                ? prev.filter(function (t) { return t !== tissue; })
                 : __spreadArray([tissue], prev, true);
         });
     };
@@ -146,35 +240,43 @@ var GeneEssentialityChart = function (_a) {
             String(point[searchField] || "")
                 .toLowerCase()
                 .includes(searchTerm.toLowerCase());
-        if (selectedCategory) {
-            if (selectedCategory === "Neutral" && point.geneEffect > -1) {
-                return "rgba(59, 130, 246, ".concat(alpha, ")");
+        if (selectedCategories.length > 0) {
+            var matchesCategory = selectedCategories.some(function (category) {
+                if (category === "Neutral" && point.geneEffect > -1)
+                    return true;
+                if (category === "Dependency" && point.geneEffect <= -1)
+                    return true;
+                if (category === "Selected Neu" &&
+                    isHighlighted &&
+                    point.geneEffect > -1)
+                    return true;
+                if (category === "Selected Dep" &&
+                    isHighlighted &&
+                    point.geneEffect <= -1)
+                    return true;
+                return false;
+            });
+            if (!matchesCategory) {
+                return "rgba(200, 200, 200, 0.1)";
             }
-            if (selectedCategory === "Dependency" && point.geneEffect <= -1) {
-                return "rgba(239, 68, 68, ".concat(alpha, ")");
-            }
-            if (selectedCategory === "Highlighted Neutral" && isHighlighted && point.geneEffect > -1) {
-                return "rgba(34, 197, 94, 1)";
-            }
-            if (selectedCategory === "Highlighted Dependency" && isHighlighted && point.geneEffect <= -1) {
-                return "rgba(234, 179, 8, 1)";
-            }
-            return "rgba(200, 200, 200, 0.1)"; // Gray out non-selected points
         }
         if (isHighlighted) {
             return point.geneEffect <= -1
-                ? "rgba(234, 179, 8, 1)" // Yellow for highlighted dependency
-                : "rgba(34, 197, 94, 1)"; // Green for highlighted neutral
+                ? "rgba(234, 179, 8, 1)"
+                : "rgba(34, 197, 94, 1)";
         }
         return point.geneEffect <= -1
-            ? "rgba(239, 68, 68, ".concat(alpha, ")") // Regular red for dependency
-            : "rgba(59, 130, 246, ".concat(alpha, ")"); // Regular blue for neutral
+            ? "rgba(239, 68, 68, ".concat(alpha, ")")
+            : "rgba(59, 130, 246, ".concat(alpha, ")");
     };
     var getPointRadius = function (point) {
         var isHighlighted = searchTerm &&
             String(point[searchField] || "")
                 .toLowerCase()
                 .includes(searchTerm.toLowerCase());
+        var isSelected = (selectedPoint === null || selectedPoint === void 0 ? void 0 : selectedPoint.depmapId) === point.depmapId;
+        if (isSelected)
+            return 8;
         return isHighlighted ? 6 : 4;
     };
     var fetchData = function () { return __awaiter(void 0, void 0, void 0, function () {
@@ -241,11 +343,17 @@ var GeneEssentialityChart = function (_a) {
                             {
                                 label: "Gene Essentiality",
                                 data: scatterData,
-                                backgroundColor: scatterData.map(function (point) { return getPointColor(point); }),
-                                borderColor: scatterData.map(function (point) { return getPointColor(point, theme, 1); }),
+                                backgroundColor: scatterData.map(function (point) {
+                                    return getPointColor(point);
+                                }),
+                                borderColor: scatterData.map(function (point) {
+                                    return getPointColor(point, theme, 1);
+                                }),
                                 borderWidth: 1,
                                 pointHoverRadius: 8,
-                                pointRadius: scatterData.map(function (point) { return getPointRadius(point); }),
+                                pointRadius: scatterData.map(function (point) {
+                                    return getPointRadius(point);
+                                }),
                                 pointHoverBackgroundColor: "rgba(0, 0, 0, 0.8)",
                                 pointHoverBorderColor: "rgba(0, 0, 0, 1)",
                                 pointHoverBorderWidth: 2,
@@ -257,7 +365,9 @@ var GeneEssentialityChart = function (_a) {
                     return [3 /*break*/, 6];
                 case 4:
                     error_1 = _c.sent();
-                    setError(error_1 instanceof Error ? error_1.message : "An error occurred while fetching data.");
+                    setError(error_1 instanceof Error
+                        ? error_1.message
+                        : "An error occurred while fetching data.");
                     return [3 /*break*/, 6];
                 case 5:
                     setLoading(false);
@@ -275,35 +385,65 @@ var GeneEssentialityChart = function (_a) {
         if (originalData) {
             var filteredData = __spreadArray([], originalData.datasets[0].data, true);
             if (selectedTissues.length > 0) {
-                filteredData = filteredData.filter(function (point) { return selectedTissues.includes(point.tissue); });
+                filteredData = filteredData.filter(function (point) {
+                    return selectedTissues.includes(point.tissue);
+                });
             }
-            if (selectedCategory) {
+            if (selectedCategories.length > 0) {
                 filteredData = filteredData.filter(function (point) {
                     var isHighlighted = searchTerm &&
                         String(point[searchField] || "")
                             .toLowerCase()
                             .includes(searchTerm.toLowerCase());
-                    if (selectedCategory === "Neutral")
-                        return point.geneEffect > -1;
-                    if (selectedCategory === "Dependency")
-                        return point.geneEffect <= -1;
-                    if (selectedCategory === "Highlighted Neutral")
-                        return isHighlighted && point.geneEffect > -1;
-                    if (selectedCategory === "Highlighted Dependency")
-                        return isHighlighted && point.geneEffect <= -1;
-                    return true;
+                    return selectedCategories.some(function (category) {
+                        if (category === "Neutral")
+                            return point.geneEffect > -1;
+                        if (category === "Dependency")
+                            return point.geneEffect <= -1;
+                        if (category === "Selected Neu")
+                            return isHighlighted && point.geneEffect > -1;
+                        if (category === "Selected Dep")
+                            return isHighlighted && point.geneEffect <= -1;
+                        return false;
+                    });
                 });
             }
             setChartData({
                 datasets: [
-                    __assign(__assign({}, originalData.datasets[0]), { data: filteredData, backgroundColor: filteredData.map(function (point) { return getPointColor(point); }), borderColor: filteredData.map(function (point) { return getPointColor(point, theme, 1); }), pointRadius: filteredData.map(function (point) { return getPointRadius(point); }) }),
+                    __assign(__assign({}, originalData.datasets[0]), { data: filteredData, backgroundColor: filteredData.map(function (point) {
+                            return getPointColor(point);
+                        }), borderColor: filteredData.map(function (point) {
+                            return getPointColor(point, theme, 1);
+                        }), pointRadius: filteredData.map(function (point) {
+                            return getPointRadius(point);
+                        }) }),
                 ],
             });
         }
-    }, [selectedTissues, searchTerm, searchField, originalData, theme, selectedCategory]);
+    }, [
+        selectedTissues,
+        searchTerm,
+        searchField,
+        originalData,
+        theme,
+        selectedCategories,
+        selectedPoint,
+    ]);
     var chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        onClick: function (event, elements) {
+            if (elements.length > 0) {
+                var dataIndex = elements[0].index;
+                var clickedPoint_1 = chartData.datasets[0].data[dataIndex];
+                setSelectedPoint(function (prevPoint) {
+                    return (prevPoint === null || prevPoint === void 0 ? void 0 : prevPoint.depmapId) === clickedPoint_1.depmapId ? null : clickedPoint_1;
+                });
+            }
+            else {
+                setSelectedPoint(null);
+            }
+        },
         scales: {
             x: {
                 title: {
@@ -314,17 +454,17 @@ var GeneEssentialityChart = function (_a) {
                         weight: "bold",
                         family: "Inter, sans-serif",
                     },
-                    color: "#1F2937",
+                    color: "#71717A",
                 },
                 ticks: {
                     font: {
                         size: 14,
                         family: "Inter, sans-serif",
                     },
-                    color: "#4B5563",
+                    color: "#71717A",
                 },
                 grid: {
-                    color: "rgba(0, 0, 0, 0.1)",
+                    color: "rgba(255, 255, 255, 0.1)",
                 },
             },
             y: {
@@ -336,7 +476,7 @@ var GeneEssentialityChart = function (_a) {
                         weight: "bold",
                         family: "Inter, sans-serif",
                     },
-                    color: "#1F2937",
+                    color: "#71717A",
                 },
                 ticks: {
                     callback: function (value) { return tissues[value] || ""; },
@@ -346,15 +486,27 @@ var GeneEssentialityChart = function (_a) {
                         size: 12,
                         family: "Inter, sans-serif",
                     },
-                    color: "#4B5563",
+                    color: "#71717A",
                 },
                 grid: {
-                    color: "rgba(0, 0, 0, 0.1)",
+                    color: "rgba(107, 109, 105,0.1)",
                 },
             },
         },
         plugins: {
             tooltip: {
+                enabled: true,
+                mode: "nearest",
+                intersect: true,
+                position: "nearest",
+                external: function (context) {
+                    if (selectedPoint && context.tooltip.dataPoints) {
+                        var dataPoint = context.tooltip.dataPoints[0].raw;
+                        if (dataPoint.depmapId === selectedPoint.depmapId) {
+                            context.tooltip.opacity = 1;
+                        }
+                    }
+                },
                 callbacks: {
                     label: function (context) {
                         var _a;
@@ -369,9 +521,9 @@ var GeneEssentialityChart = function (_a) {
                         ];
                     },
                 },
-                backgroundColor: "rgba(255, 255, 255, 0.8)",
-                titleColor: "#000000",
-                bodyColor: "#1F2937",
+                backgroundColor: "rgba(0, 0, 0, 0.8)",
+                titleColor: "rgba(255, 255, 255, 0.8)",
+                bodyColor: "rgba(255, 255, 255, 0.8)",
                 titleFont: {
                     size: 14,
                     weight: "bold",
@@ -381,7 +533,7 @@ var GeneEssentialityChart = function (_a) {
                 },
                 padding: 12,
                 cornerRadius: 8,
-                borderColor: "rgba(0, 0, 0, 0.1)",
+                borderColor: "rgba(255, 255, 255, 0.1)",
                 borderWidth: 1,
             },
             annotation: {
@@ -392,7 +544,7 @@ var GeneEssentialityChart = function (_a) {
                         yMax: tissues.length - 0.5,
                         xMin: -1,
                         xMax: -1,
-                        borderColor: "rgba(185, 28, 28, 0.5)",
+                        borderColor: "rgba(239, 68, 68, 0.5)",
                         borderWidth: 2,
                         borderDash: [6, 6],
                         label: {
@@ -403,33 +555,79 @@ var GeneEssentialityChart = function (_a) {
                                 size: 14,
                                 weight: "bold",
                             },
-                            color: "rgba(185, 28, 28, 1)",
+                            color: "rgba(239, 68, 68, 1)",
                         },
                     },
                 },
             },
         },
     };
-    return (React.createElement(React.Fragment, null, chartData && (React.createElement(React.Fragment, null,
-        React.createElement("div", { className: "flex flex-col items-center sm:space-y-4 lg:flex-row lg:justify-between lg:space-x-4 lg:items-center m-auto w-[90%]" },
-            React.createElement("div", { className: "flex flex-col justify-center mt-4 border w-fit p-2 ml-3 border-gray-500 rounded-xl" }, ["Neutral", "Dependency", "Highlighted Neutral", "Highlighted Dependency"].map(function (category) { return (React.createElement("div", { key: category, className: "flex items-center space-x-4 ml-4 cursor-pointer", onClick: function () { return setSelectedCategory(selectedCategory === category ? null : category); } },
-                React.createElement("div", { className: "w-4 h-4 rounded-full ".concat(category === "Neutral"
-                        ? "bg-blue-400"
-                        : category === "Dependency"
-                            ? "bg-red-400"
-                            : category === "Highlighted Neutral"
-                                ? "bg-green-500"
-                                : "bg-yellow-500", " ").concat(selectedCategory === category ? "ring-2 ring-black" : "") }),
-                React.createElement("p", { className: "text-gray-700 ".concat(selectedCategory === category ? "font-bold" : "") }, category))); })),
-            React.createElement(SearchBar, { searchTerm: searchTerm, onSearchChange: handleSearchChange, searchField: searchField, onSearchFieldChange: handleSearchFieldChange }),
-            tissues.length > 0 && (React.createElement("div", { className: "mt-4 mr-3" },
+    useEffect(function () {
+        var _a;
+        if (chartRef.current && selectedPoint) {
+            var chart = chartRef.current;
+            var dataset = chart.data.datasets[0];
+            var index = dataset.data.findIndex(function (point) { return point.depmapId === selectedPoint.depmapId; });
+            if (index !== -1) {
+                chart.setActiveElements([{ datasetIndex: 0, index: index }]);
+                var meta = chart.getDatasetMeta(0);
+                (_a = chart.tooltip) === null || _a === void 0 ? void 0 : _a.setActiveElements([{ datasetIndex: 0, index: index }], {
+                    x: meta.data[index].x,
+                    y: meta.data[index].y,
+                });
+                chart.update();
+            }
+        }
+    }, [selectedPoint]);
+    return (React.createElement("div", { className: "flex h-screen w-full" },
+        React.createElement("div", { style: {
+                width: "".concat(sidebarWidth, "px"),
+                minWidth: isSidebarCollapsed ? "40px" : "200px",
+                maxWidth: "80%",
+                transition: isResizing ? "none" : "width 0.3s ease",
+            }, className: "flex flex-col bg-transparent dark:bg-transparent border-r border-gray-200 dark:border-gray-700" },
+            React.createElement("div", { className: "flex justify-end p-2" },
+                React.createElement("button", { onClick: toggleSidebar, className: "p-2  hover:bg-gray-300 bg-slate-300 rounded-xl dark:hover:bg-gray-300 dark:bg-gray-200", title: isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar" },
+                    React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", className: "w-6 h-6 dark:text-gray-900 transition-transform duration-300 ".concat(isSidebarCollapsed ? "rotate-180" : "") },
+                        React.createElement("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M15 19l-7-7 7-7" })))),
+            React.createElement("div", { className: "flex-1 overflow-y-auto ".concat(isSidebarCollapsed ? "hidden" : "") }, chartData && (React.createElement("div", { className: "p-4 space-y-4" },
+                React.createElement("button", { onClick: exportToCSV, className: "flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-xl hover:bg-gray-600 dark:bg-gray-200 dark:text-gray-800 dark:hover:bg-gray-300 transition-colors" },
+                    React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "currentColor", className: "w-4 h-4", "aria-hidden": "true" },
+                        React.createElement("path", { fillRule: "evenodd", d: "M12 3.75a.75.75 0 0 1 .75.75v9.69l3.22-3.22a.75.75 0 0 1 1.06 1.06l-4.5 4.5a.75.75 0 0 1-1.06 0l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.22 3.22V4.5a.75.75 0 0 1 .75-.75zM4.5 18a.75.75 0 0 1 .75-.75h13.5a.75.75 0 0 1 0 1.5H5.25A.75.75 0 0 1 4.5 18z", clipRule: "evenodd" })),
+                    React.createElement("span", null, "Export CSV")),
+                React.createElement("div", { className: "border rounded-xl p-4 space-y-2" }, ["Neutral", "Dependency", "Selected Neu", "Selected Dep"].map(function (category) { return (React.createElement("div", { key: category, className: "flex items-center space-x-3" },
+                    React.createElement("input", { type: "checkbox", id: category, checked: selectedCategories.includes(category), onChange: function () {
+                            setSelectedCategories(function (prev) {
+                                return prev.includes(category)
+                                    ? prev.filter(function (c) { return c !== category; })
+                                    : __spreadArray(__spreadArray([], prev, true), [category], false);
+                            });
+                        }, className: "form-checkbox h-4 w-4 text-blue-600" }),
+                    React.createElement("label", { htmlFor: category, className: "flex items-center cursor-pointer text-sm" },
+                        React.createElement("div", { className: "w-3 h-3 rounded-full mr-2 ".concat(category === "Neutral"
+                                ? "bg-blue-400"
+                                : category === "Dependency"
+                                    ? "bg-red-400"
+                                    : category === "Selected Neu"
+                                        ? "bg-green-500"
+                                        : "bg-yellow-500") }),
+                        category))); })),
+                React.createElement(SearchBar, { searchTerm: searchTerm, onSearchChange: handleSearchChange, searchField: searchField, onSearchFieldChange: handleSearchFieldChange }),
                 React.createElement(TissueDropdown, { tissues: tissues, selectedTissues: selectedTissues, onTissueToggle: handleTissueToggle }),
-                selectedTissues.length > 0 && (React.createElement("div", { className: "mt-2 flex flex-col flex-wrap gap-2 w-fit " }, selectedTissues.map(function (tissue, index) { return (React.createElement("span", { key: index, className: "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800" },
-                    tissue,
-                    React.createElement("button", { type: "button", className: "flex-shrink-0 ml-1.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-gray-400 hover:bg-gray-200 hover:text-gray-500 focus:outline-none focus:bg-gray-500 focus:text-white", onClick: function () { return handleTissueToggle(tissue); } },
-                        React.createElement("span", { className: "sr-only" }, "Remove tissue filter"),
-                        "\u00D7"))); })))))),
-        React.createElement("div", { className: "relative h-[90vh] m-auto w-[90%]" },
+                selectedTissues.length > 0 && (React.createElement("div", { className: "border rounded-xl p-4 relative" },
+                    React.createElement("div", { className: "flex flex-wrap gap-2 pr-8" }, selectedTissues.map(function (tissue) { return (React.createElement("span", { key: tissue, className: "inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
+                        tissue,
+                        React.createElement("button", { onClick: function () { return handleTissueToggle(tissue); }, className: "ml-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" }, "\u00D7"))); })),
+                    React.createElement("button", { onClick: function () { return setSelectedTissues([]); }, className: "absolute top-3 right-3 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors", title: "Clear all filters" },
+                        React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", className: "h-4 w-4 text-red-500 hover:text-red-700", "aria-hidden": "true" },
+                            React.createElement("polyline", { points: "3 6 5 6 21 6" }),
+                            React.createElement("path", { d: "M19 6l-.867 12.142A2 2 0 0 1 16.138 20H7.862a2 2 0 0 1-1.995-1.858L5 6" }),
+                            React.createElement("path", { d: "M10 11v6" }),
+                            React.createElement("path", { d: "M14 11v6" }),
+                            React.createElement("path", { d: "M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" })),
+                        React.createElement("span", { className: "sr-only" }, "Clear all filters")))))))),
+        React.createElement("div", { ref: resizeRef, className: "w-1 cursor-col-resize bg-gray-200 hover:bg-blue-500 active:bg-blue-600 transition-colors", onMouseDown: function () { return setIsResizing(true); } }),
+        React.createElement("div", { className: "flex-1 overflow-hidden" }, chartData && (React.createElement("div", { className: "h-full w-full p-4" },
             React.createElement(Scatter, { data: chartData, options: chartOptions, ref: chartRef }))))));
 };
 

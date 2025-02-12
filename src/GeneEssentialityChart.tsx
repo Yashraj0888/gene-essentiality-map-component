@@ -8,6 +8,7 @@ import {
 } from "chart.js";
 import { Scatter } from "react-chartjs-2";
 import annotationPlugin from "chartjs-plugin-annotation";
+import React from "react";
 
 Chart.register(
   ScatterController,
