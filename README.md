@@ -42,6 +42,10 @@ export default function MainGeneMap() {
   - Highlighted Neutral
   - Highlighted Dependency
   - Tissue name
+- Adjustable side bar
+  - Able to adjust side bar width
+- Export as csv
+  - Able to export as csv
 
 ## Testing
 

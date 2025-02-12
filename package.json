@@ -1,6 +1,6 @@
 {
     "name": "gene-essentiality-chart",
-    "version": "2.0.1",
+    "version": "3.0.1",
     "type": "module",
     "description": "A React component for visualizing gene essentiality data with tissue dependency",
     "main": "dist/index.js",
